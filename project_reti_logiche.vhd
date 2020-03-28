@@ -1,21 +1,7 @@
 ----------------------------------------------------------------------------------
 -- Company: Politecnico di Milano
 -- Student: Juri Sacchetta - 890600
--- 
--- Create Date: 
--- Design Name: 
 -- Module Name: project_reti_logiche - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
 ----------------------------------------------------------------------------------
 
 
@@ -46,7 +32,7 @@ constant NUM_BIT_DIM : natural := DIM_WZ; --L'offset si calcola in codifica OneH
 constant ADDR_DATA_TO_CONVERT : std_logic_vector := std_logic_vector(to_unsigned(8,16)); --indirizzo del dato da convertire
 constant ADDR_DATA_CONVERTED : std_logic_vector := std_logic_vector(to_unsigned(9,16)); --indirizzo dove scrivere il dato convertito
 
-type state_type is (IDLE, FETCH_DATA_TO_CONVERT, WAIT_DATA_TO_CONVERT, FETCH_BASE_WZ, WAIT_BASE_WZ, ANALYSE_DATA, DONE);
+type state_type is (IDLE, FETCH_DATA, WAIT_DATA, FETCH_BASE_WZ, WAIT_BASE_WZ, ANALYZE_DATA, DONE);
  
 signal next_state, current_state: state_type;
 signal data_to_convert, next_data_to_convert, wz_base, next_wz_base : unsigned(7 downto 0);
@@ -96,7 +82,7 @@ begin
     
     when IDLE =>
         if i_start='1' then
-            next_state <= FETCH_DATA_TO_CONVERT;
+            next_state <= FETCH_DATA;
         else
             next_state <= IDLE;
         end if;
@@ -105,13 +91,13 @@ begin
         next_numwz <= 0;
         
         
-    when FETCH_DATA_TO_CONVERT =>        
+    when FETCH_DATA =>        
         o_address <= ADDR_DATA_TO_CONVERT;
         o_en <='1';
         o_we <='0';
-        next_state <= WAIT_DATA_TO_CONVERT;
+        next_state <= WAIT_DATA;
         
-    when WAIT_DATA_TO_CONVERT =>
+    when WAIT_DATA =>
         next_data_to_convert <= unsigned(i_data);
         next_state <= FETCH_BASE_WZ;
         
@@ -124,9 +110,9 @@ begin
         
     when WAIT_BASE_WZ =>
         next_wz_base <= unsigned(i_data);
-        next_state <= ANALYSE_DATA;
+        next_state <= ANALYZE_DATA;
         
-    when ANALYSE_DATA =>
+    when ANALYZE_DATA =>
             tmp :=  to_integer(data_to_convert - wz_base);
         --Qua va messa la logica del controllo di appartenenza
             if tmp>=DIM_WZ OR tmp<0 then
