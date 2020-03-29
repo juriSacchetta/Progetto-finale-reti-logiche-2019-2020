@@ -25,18 +25,18 @@ end project_reti_logiche;
 
 architecture Behavioral of project_reti_logiche is
 
-constant NUMBER_OF_WORKING_ZONE : natural :=7; --numero di working zone in memoria iniziando il conteggio da 0
+constant NUMBER_OF_WORKING_ZONE : natural :=8; --numero di working zone in memoria
 constant NUM_BIT_WZ : natural :=3; --Numero di bit necessario per esprimere la constante NUMBER_OF_WORKING_ZONE in binario
 constant DIM_WZ : natural :=4; --Dimensione della Working Zone 
 constant NUM_BIT_DIM : natural := DIM_WZ; --L'offset si calcola in codifica OneHot quindi il numero di bit è proprio la dimensione della Working Zone
 constant ADDR_DATA_TO_CONVERT : std_logic_vector := std_logic_vector(to_unsigned(8,16)); --indirizzo del dato da convertire
 constant ADDR_DATA_CONVERTED : std_logic_vector := std_logic_vector(to_unsigned(9,16)); --indirizzo dove scrivere il dato convertito
 
-type state_type is (IDLE, FETCH_DATA, WAIT_DATA, FETCH_BASE_WZ, WAIT_BASE_WZ, ANALYZE_DATA, DONE);
+type state_type is (IDLE, FETCH_DATA, WAIT_DATA, FETCH_BASE_WZ, ANALYZE_DATA, DONE);
  
 signal next_state, current_state: state_type;
-signal data_to_convert, next_data_to_convert, wz_base, next_wz_base : unsigned(7 downto 0);
-signal numwz, next_numwz : integer range 0 to NUMBER_OF_WORKING_ZONE+1 :=0;
+signal data_to_convert, next_data_to_convert : unsigned(7 downto 0);
+signal numwz, next_numwz : integer range 0 to NUMBER_OF_WORKING_ZONE :=0;
 
 begin
     --processo sensibile al clock e reset per gestire i cambi di stato
@@ -45,26 +45,24 @@ begin
         if i_rst='1' then
             current_state <= IDLE;
             data_to_convert <= (others => '-');
-            wz_base <= (others => '-');
             numwz <=0;
             elsif rising_edge(i_clk) then
             current_state<=next_state;
             data_to_convert <= next_data_to_convert;
-            wz_base <= next_wz_base;
             numwz <= next_numwz;
         end if;
     end process;
     
     --processo per definire lo stato prossimo e la logica interna
-    delta: process(current_state, i_start, i_data, data_to_convert, wz_base, numwz)
+    delta: process(current_state, i_start, i_data, data_to_convert, numwz)
     variable tmp : natural;
-    variable offset : unsigned(NUM_BIT_DIM-1 downto 0) := (0=>'1' , others => '0');
+    variable offset : unsigned(NUM_BIT_DIM-1 downto 0);
     variable tmp_numwz : unsigned(NUM_BIT_WZ-1 downto 0) :=(others => '-');
     begin
     
     --valori di dafault
+    offset:=(others=>'-');
     tmp:=0;
-    offset:= (0=>'1' , others => '0');
     tmp_numwz := (others =>'-');
     
     o_address <=(others =>'-');
@@ -74,7 +72,6 @@ begin
     o_data <= (others => '-');
     
     next_data_to_convert <= data_to_convert;
-    next_wz_base <= wz_base;
     next_numwz <= numwz;
     
     
@@ -87,7 +84,6 @@ begin
             next_state <= IDLE;
         end if;
         next_data_to_convert <= (others => '-');
-        next_wz_base <= (others => '-');
         next_numwz <= 0;
         
         
@@ -106,17 +102,13 @@ begin
         o_en<='1';
         o_we<='0';
         next_numwz <= numwz+1;
-        next_state <= WAIT_BASE_WZ;
-        
-    when WAIT_BASE_WZ =>
-        next_wz_base <= unsigned(i_data);
         next_state <= ANALYZE_DATA;
         
     when ANALYZE_DATA =>
-            tmp :=  to_integer(data_to_convert - wz_base);
+            tmp :=  to_integer(data_to_convert - unsigned(i_data));
         --Qua va messa la logica del controllo di appartenenza
             if tmp>=DIM_WZ OR tmp<0 then
-                if numwz <= NUMBER_OF_WORKING_ZONE then
+                if numwz <= NUMBER_OF_WORKING_ZONE-1 then
                     next_state <=FETCH_BASE_WZ;
                 else
                     o_address <= ADDR_DATA_CONVERTED;
@@ -126,6 +118,7 @@ begin
                     next_state <= DONE;
                 end if;
             else
+                offset := (0=>'1', others =>'0');
                 offset := shift_left(offset, tmp);
                 tmp_numwz := to_unsigned(numwz-1, NUM_BIT_WZ);
                 o_address <= ADDR_DATA_CONVERTED;
