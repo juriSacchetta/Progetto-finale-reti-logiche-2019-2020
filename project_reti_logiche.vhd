@@ -26,7 +26,7 @@ end project_reti_logiche;
 architecture Behavioral of project_reti_logiche is
 
 constant NUMBER_OF_WORKING_ZONE : natural :=8; --numero di working zone in memoria
-constant NUM_BIT_WZ : natural :=3; --Numero di bit necessario per esprimere la constante NUMBER_OF_WORKING_ZONE in binario
+constant NUM_BIT_WZ : natural :=3; --Numero di bit necessario per esprimere il numero di WZ in binario
 constant DIM_WZ : natural :=4; --Dimensione della Working Zone 
 constant NUM_BIT_DIM : natural := DIM_WZ; --L'offset si calcola in codifica OneHot quindi il numero di bit è proprio la dimensione della Working Zone
 constant ADDR_DATA_TO_CONVERT : std_logic_vector := std_logic_vector(to_unsigned(8,16)); --indirizzo del dato da convertire
@@ -60,10 +60,6 @@ begin
     variable tmp_numwz : unsigned(NUM_BIT_WZ-1 downto 0) :=(others => '-');
     begin
     
-    --valori di dafault
-    offset:=(others=>'-');
-    tmp:=0;
-    tmp_numwz := (others =>'-');
     
     o_address <=(others =>'-');
     o_done <= '0';
@@ -83,8 +79,6 @@ begin
         else
             next_state <= IDLE;
         end if;
-        next_data_to_convert <= (others => '-');
-        next_numwz <= 0;
         
         
     when FETCH_DATA =>        
@@ -108,7 +102,7 @@ begin
             tmp :=  to_integer(data_to_convert - unsigned(i_data));
         --Qua va messa la logica del controllo di appartenenza
             if tmp>=DIM_WZ OR tmp<0 then
-                if numwz <= NUMBER_OF_WORKING_ZONE-1 then
+                if numwz < NUMBER_OF_WORKING_ZONE then
                     next_state <=FETCH_BASE_WZ;
                 else
                     o_address <= ADDR_DATA_CONVERTED;
@@ -136,6 +130,8 @@ begin
         else
             o_done <= '0';
             next_state <= IDLE;
+            next_data_to_convert <= (others => '-');
+            next_numwz <= 0;
         end if;
         
     end case;
